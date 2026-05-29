@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SEO Analyst Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#080c10;font-family:'IBM Plex Mono',monospace;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:#00ff8840;border-radius:2px}
+    @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    #header{background:#0a0f14;border-bottom:1px solid #00ff8820;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+    .logo{display:flex;align-items:center;gap:12px}
+    .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#00ff88,#00cc6a);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px #00ff8840}
+    .logo-title{font-size:14px;font-weight:700;color:#fff;letter-spacing:1px}
+    .logo-sub{font-size:10px;color:#4488ff;letter-spacing:2px}
+    #keybtn{background:#ff880015;border:1px solid #ff880040;border-radius:8px;padding:6px 12px;color:#ff8844;font-size:11px;cursor:pointer;font-family:inherit}
+    #keybtn.saved{background:#00ff8815;border-color:#00ff8840;color:#00ff88}
+    #keypanel{background:#0d1117;border-bottom:1px solid #1e2833;padding:16px 20px;display:none}
+    #keypanel .hint{font-size:11px;color:#666;margin-bottom:8px}
+    #keypanel .hint span{color:#4488ff}
+    #keypanel .row{display:flex;gap:8px}
+    #keyinput{flex:1;background:#080c10;border:1px solid #1e2833;border-radius:8px;padding:10px 14px;color:#e0e0e0;font-size:13px;font-family:inherit;outline:none}
+    #savebtn{background:linear-gradient(135deg,#00ff88,#00cc6a);border:none;border-radius:8px;padding:10px 20px;color:#000;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit}
+    #chat{flex:1;overflow-y:auto;padding:24px 20px;max-width:800px;width:100%;margin:0 auto}
+    #welcome{text-align:center;padding:32px 20px;animation:fadeIn 0.6s ease}
+    #welcome h1{font-size:24px;font-weight:700;color:#fff;margin-bottom:8px}
+    #welcome h1 span{color:#00ff88}
+    #welcome p{color:#555;font-size:12px;max-width:360px;margin:0 auto 24px;line-height:1.8}
+    .setup-box{background:#0d1008;border:1px solid #4488ff30;border-radius:12px;padding:16px 20px;margin:0 auto 24px;max-width:420px;text-align:left}
+    .setup-box h3{font-size:12px;color:#4488ff;margin-bottom:10px;font-weight:700}
+    .setup-step{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+    .step-num{font-size:10px;color:#4488ff;font-weight:700;width:20px}
+    .step-txt{font-size:12px;color:#666}
+    .step-txt span{color:#88aaff}
+    .pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:24px}
+    .pill{font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid #00ff8830;color:#00ff8890;background:#00ff8808}
+    .examples-label{font-size:10px;color:#333;margin-bottom:10px;letter-spacing:1px}
+    .examples{display:flex;flex-direction:column;gap:8px;max-width:400px;margin:0 auto}
+    .ex-btn{background:#0d1117;border:1px solid #1e2a1e;border-radius:10px;padding:11px 16px;color:#7aaa7a;font-size:12px;cursor:pointer;text-align:left;font-family:inherit;transition:all 0.2s}
+    .ex-btn:hover{border-color:#00ff8850;color:#00ff88}
+    .msg{margin-bottom:20px;animation:fadeIn 0.4s ease}
+    .msg-user{display:flex;justify-content:flex-end}
+    .msg-user-bubble{background:linear-gradient(135deg,#003320,#001a10);border:1px solid #00ff8830;border-radius:16px 16px 4px 16px;padding:12px 16px;max-width:80%;font-size:13px;color:#00ff88}
+    .msg-bot{background:#0d1117;border:1px solid #1e2833;border-radius:4px 16px 16px 16px;padding:16px 20px}
+    .msg-bot-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #1e2833}
+    .msg-bot-icon{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,#00ff88,#00cc6a);display:flex;align-items:center;justify-content:center;font-size:12px}
+    .msg-bot-label{font-size:11px;color:#00ff88;letter-spacing:1px}
+    .msg-bot-model{font-size:10px;color:#333;margin-left:auto}
+    .msg-content{line-height:1.75}
+    .msg-content h2,.msg-content h3{font-size:15px;font-weight:700;color:#00ff88;margin-top:18px;margin-bottom:5px}
+    .msg-content strong{color:#e8e8e8}
+    .msg-content li{display:flex;gap:8px;margin-bottom:4px;padding-left:8px;color:#c8c8c8;font-size:14px}
+    .msg-content li::before{content:"▸";color:#00ff88;flex-shrink:0}
+    .msg-content p{color:#c8c8c8;font-size:14px;margin-bottom:4px}
+    .score-badge{display:inline-flex;align-items:center;gap:10px;border-radius:12px;padding:8px 16px;margin-top:12px}
+    .typing{background:#0d1117;border:1px solid #1e2833;border-radius:4px 16px 16px 16px;display:inline-block;margin-bottom:20px}
+    .typing-header{display:flex;align-items:center;gap:10px;padding:12px 16px}
+    .typing-dots{display:flex;gap:6px;padding:8px 18px 14px}
+    .dot{width:8px;height:8px;border-radius:50%;background:#00ff88;animation:bounce 1.2s ease-in-out infinite}
+    #inputarea{border-top:1px solid #00ff8815;padding:14px 20px;background:#0a0f14;position:sticky;bottom:0}
+    #inputrow{max-width:800px;margin:0 auto;display:flex;gap:10px;align-items:flex-end}
+    #inputbox{flex:1;background:#0d1117;border:1px solid #1e2833;border-radius:14px;padding:12px 16px}
+    #msginput{width:100%;background:transparent;border:none;color:#e0e0e0;font-size:13px;font-family:inherit;line-height:1.6;outline:none;resize:none}
+    #sendbtn{width:44px;height:44px;border-radius:12px;border:none;background:#1a2a1a;color:#334433;font-size:18px;cursor:not-allowed;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
+    #sendbtn.active{background:linear-gradient(135deg,#00ff88,#00cc6a);color:#000;cursor:pointer;box-shadow:0 0 20px #00ff8840}
+    .hint-txt{text-align:center;font-size:10px;color:#2a2a2a;margin-top:6px;letter-spacing:1px}
+    .scanline{position:fixed;inset:0;pointer-events:none;z-index:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,0.015) 2px,rgba(0,255,136,0.015) 4px)}
+  </style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<div id="header">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-title">SEO ANALYST AGENT</div>
+      <div class="logo-sub">POWERED BY GOOGLE GEMINI · FREE</div>
+    </div>
+  </div>
+  <button id="keybtn" onclick="toggleKey()">🔑 ADD KEY</button>
+</div>
+
+<div id="keypanel">
+  <div class="hint">Get free key → <span>aistudio.google.com</span> → Get API Key → Create API Key</div>
+  <div class="row">
+    <input type="password" id="keyinput" placeholder="Paste your Gemini API key (AIza...)"/>
+    <button id="savebtn" onclick="saveKey()">SAVE</button>
+  </div>
+  <div style="font-size:10px;color:#333;margin-top:8px">Key stays in your browser only</div>
+</div>
+
+<div id="chat">
+  <div id="welcome">
+    <div style="font-size:48px;margin-bottom:16px;filter:drop-shadow(0 0 20px #00ff8880)">🔍</div>
+    <h1>Full-Stack <span>SEO Analyst</span></h1>
+    <p>One agent. Complete audit. Powered by Google Gemini — 100% free.</p>
+    <div class="setup-box">
+      <h3>Quick Setup (2 mins)</h3>
+      <div class="setup-step"><span class="step-num">01</span><span class="step-txt">Go to <span>aistudio.google.com</span></span></div>
+      <div class="setup-step"><span class="step-num">02</span><span class="step-txt">Click <span>Get API Key → Create API Key</span></span></div>
+      <div class="setup-step"><span class="step-num">03</span><span class="step-txt">Tap <span>🔑 ADD KEY above & paste</span></span></div>
+    </div>
+    <div class="pills">
+      <span class="pill">🕷️ Technical</span>
+      <span class="pill">📄 On-Page</span>
+      <span class="pill">🏆 Competitors</span>
+      <span class="pill">🔗 Backlinks</span>
+      <span class="pill">🎯 Keywords</span>
+      <span class="pill">📅 90-Day Plan</span>
+    </div>
+    <div class="examples-label">TRY AN EXAMPLE</div>
+    <div class="examples">
+      <button class="ex-btn" onclick="sendMsg('Audit: shopify.com')">▶ Audit: shopify.com</button>
+      <button class="ex-btn" onclick="sendMsg('Analyse: notion.so')">▶ Analyse: notion.so</button>
+      <button class="ex-btn" onclick="sendMsg('SEO review: fitpro.com (fitness coaching)')">▶ SEO review: fitpro.com</button>
+    </div>
+  </div>
+</div>
+
+<div id="inputarea">
+  <div id="inputrow">
+    <div id="inputbox">
+      <textarea id="msginput" rows="1" placeholder="Add your free Gemini API key first (tap 🔑 above)" onkeydown="handleKey(event)" oninput="updateBtn()"></textarea>
+    </div>
+    <button id="sendbtn" onclick="sendMsg()">⚡</button>
+  </div>
+  <div class="hint-txt">SHIFT+ENTER FOR NEW LINE · ENTER TO SEND</div>
+</div>
+
+<script>
+const SYSTEM = `You are an elite SEO Analyst Agent. When given a website URL or domain, perform a comprehensive SEO analysis:
+
+1. TECHNICAL AUDIT - crawl issues, page speed, meta tags, canonical tags, mobile-friendliness, HTTPS, structured data
+2. ON-PAGE AUDIT - title tags, meta descriptions, heading hierarchy, keyword usage, content quality, internal linking
+3. COMPETITOR ANALYSIS - identify 3-5 competitors, keyword gaps, content strategy, backlink differences
+4. BACKLINK INTELLIGENCE - profile health, toxic risks, anchor text diversity, link building opportunities
+5. KEYWORD STRATEGY - clusters, intent mapping (info/transactional/navigational), quick wins vs long-term
+6. PLAN OF ACTION - 30/60/90-day roadmap with tasks, impact (High/Medium/Low), effort (Easy/Medium/Hard)
+
+Use clear sections with emoji icons and bullet points. Label assumptions clearly.
+End with SEO Health Score: X/100 with justification.
+End with: Feedback Loop: [2-3 follow-up actions]`;
+
+let apiKey = '';
+let messages = [];
+let loading = false;
+
+function toggleKey(){
+  const p = document.getElementById('keypanel');
+  p.style.display = p.style.display==='block'?'none':'block';
+  if(p.style.display==='block') document.getElementById('keyinput').value = apiKey;
+}
+
+function saveKey(){
+  const v = document.getElementById('keyinput').value.trim();
+  if(v){ apiKey=v; document.getElementById('keybtn').textContent='🔑 KEY SET'; document.getElementById('keybtn').className='saved'; document.getElementById('keypanel').style.display='none'; document.getElementById('msginput').placeholder='Enter a URL or domain to audit...'; }
+}
+
+function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();} }
+
+function updateBtn(){
+  const btn=document.getElementById('sendbtn');
+  const val=document.getElementById('msginput').value.trim();
+  btn.className=val&&!loading?'active':'';
+}
+
+function renderContent(text){
+  const lines=text.split('\n');
+  let html='';
+  for(const line of lines){
+    if(/^#{1,2} /.test(line)){html+=`<h2>${line.replace(/^#+\s/,'')}</h2>`;continue;}
+    if(/^\*\*(.+)\*\*$/.test(line)){html+=`<p><strong>${line.replace(/\*\*/g,'')}</strong></p>`;continue;}
+    if(/^[-*] /.test(line)){const c=line.slice(2).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');html+=`<li>${c}</li>`;continue;}
+    if(!line.trim()){html+='<br>';continue;}
+    html+=`<p>${line.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`;
+  }
+  const sm=text.match(/SEO Health Score[:\s]+(\d+)/i)||text.match(/Score[:\s]+(\d+)\/100/i);
+  if(sm){
+    const s=parseInt(sm[1]);
+    const c=s>=75?'#00ff88':s>=50?'#ffcc00':'#ff4444';
+    const l=s>=75?'Healthy':s>=50?'Needs Work':'Critical';
+    const circ=(s/100)*125.6;
+    html+=`<div class="score-badge" style="background:${c}15;border:1px solid ${c}40">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="#ffffff10" stroke-width="4"/>
+        <circle cx="24" cy="24" r="20" fill="none" stroke="${c}" stroke-width="4" stroke-dasharray="${circ} 125.6" stroke-linecap="round" transform="rotate(-90 24 24)"/>
+        <text x="24" y="28" text-anchor="middle" font-size="11" font-weight="700" fill="${c}">${s}</text>
+      </svg>
+      <div><div style="font-size:13px;font-weight:700;color:${c}">${l}</div><div style="font-size:11px;color:#888">SEO Health Score</div></div>
+    </div>`;
+  }
+  return html;
+}
+
+async function sendMsg(text){
+  const input=document.getElementById('msginput');
+  const userMsg=text||input.value.trim();
+  if(!userMsg||loading) return;
+  if(!apiKey){toggleKey();return;}
+  input.value=''; updateBtn();
+  document.getElementById('welcome').style.display='none';
+  messages.push({role:'user',content:userMsg});
+  loading=true; updateBtn();
+
+  const chat=document.getElementById('chat');
+  const userDiv=document.createElement('div');
+  userDiv.className='msg';
+  userDiv.innerHTML=`<div class="msg-user"><div class="msg-user-bubble">${userMsg}</div></div>`;
+  chat.appendChild(userDiv);
+
+  const typingDiv=document.createElement('div');
+  typingDiv.className='typing';
+  typingDiv.innerHTML=`<div class="typing-header"><div class="msg-bot-icon">⚡</div><span style="font-size:11px;color:#00ff88;letter-spacing:1px;animation:pulse 1.5s infinite">RUNNING SEO ANALYSIS...</span></div><div class="typing-dots"><div class="dot" style="animation-delay:0s"></div><div class="dot" style="animation-delay:0.2s"></div><div class="dot" style="animation-delay:0.4s"></div></div>`;
+  chat.appendChild(typingDiv);
+  chat.scrollTop=chat.scrollHeight;
+
+  try{
+    const contents=messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({system_instruction:{parts:[{text:SYSTEM}]},contents,generationConfig:{maxOutputTokens:2048,temperature:0.7}})
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const reply=data.candidates?.[0]?.content?.parts?.[0]?.text||'No response.';
+    messages.push({role:'assistant',content:reply});
+    typingDiv.remove();
+    const botDiv=document.createElement('div');
+    botDiv.className='msg';
+    botDiv.innerHTML=`<div class="msg-bot"><div class="msg-bot-header"><div class="msg-bot-icon">⚡</div><span class="msg-bot-label">SEO AGENT REPORT</span><span class="msg-bot-model">Gemini 1.5 Flash</span></div><div class="msg-content">${renderContent(reply)}</div></div>`;
+    chat.appendChild(botDiv);
+  }catch(e){
+    typingDiv.remove();
+    const errDiv=document.createElement('div');
+    errDiv.className='msg';
+    errDiv.innerHTML=`<div class="msg-bot"><div class="msg-content"><p style="color:#ff6666">Error: ${e.message}</p></div></div>`;
+    chat.appendChild(errDiv);
+  }
+  loading=false; updateBtn();
+  chat.scrollTop=chat.scrollHeight;
+}
+
+document.getElementById('keyinput').addEventListener('keydown',e=>{if(e.key==='Enter')saveKey();});
+</script>
+</body>
+</html>
