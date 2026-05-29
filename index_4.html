@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEO Analyst Agent</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080c10; font-family: 'IBM Plex Mono', monospace; color: #e0e0e0; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #00ff8840; border-radius: 2px; }
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-8px)} }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    @keyframes slideDown { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+    textarea, input { resize: none; outline: none; }
+    .scanline {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,136,0.015) 2px, rgba(0,255,136,0.015) 4px);
+    }
+  </style>
+</head>
+<body>
+  <div class="scanline"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    const SYSTEM_PROMPT = `You are an elite SEO Analyst Agent. When given a website URL or domain, perform a comprehensive SEO analysis covering:
+
+1. TECHNICAL AUDIT - crawl issues, page speed, meta tags, canonical tags, mobile-friendliness, HTTPS, structured data
+2. ON-PAGE AUDIT - title tags, meta descriptions, heading hierarchy, keyword usage, content quality, internal linking
+3. COMPETITOR ANALYSIS - identify 3-5 competitors, keyword positioning, content strategy, backlink differences
+4. BACKLINK INTELLIGENCE - backlink profile health, toxic link risks, anchor text diversity, link building opportunities
+5. KEYWORD STRATEGY - keyword clusters, search intent mapping, quick wins vs long-term targets, content gaps
+6. PLAN OF ACTION - prioritized 30/60/90-day SEO roadmap with tasks, expected impact (High/Medium/Low), effort (Easy/Medium/Hard)
+
+Format with clear sections, emoji icons, and actionable bullet points. If you cannot crawl the site, analyze based on the domain/niche with labeled assumptions.
+
+End with an SEO Health Score from 0-100 with justification.
+Always end with: "Feedback Loop: [2-3 specific follow-up actions]"`;
+
+    const TypingDots = () => (
+      <div style={{display:'flex',gap:6,alignItems:'center',padding:'14px 18px'}}>
+        {[0,1,2].map(i=>(
+          <div key={i} style={{width:8,height:8,borderRadius:'50%',background:'#00ff88',
+            animation:'bounce 1.2s ease-in-out infinite',animationDelay:`${i*0.2}s`}}/>
+        ))}
+      </div>
+    );
+
+    const ScoreBadge = ({score}) => {
+      const color = score>=75?'#00ff88':score>=50?'#ffcc00':'#ff4444';
+      const label = score>=75?'Healthy':score>=50?'Needs Work':'Critical';
+      const circ = (score/100)*125.6;
+      return (
+        <div style={{display:'inline-flex',alignItems:'center',gap:10,
+          background:`${color}15`,border:`1px solid ${color}40`,
+          borderRadius:12,padding:'8px 16px',marginTop:12}}>
+          <div style={{position:'relative',width:48,height:48}}>
+            <svg width="48" height="48" viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#ffffff10" strokeWidth="4"/>
+              <circle cx="24" cy="24" r="20" fill="none" stroke={color} strokeWidth="4"
+                strokeDasharray={`${circ} 125.6`} strokeLinecap="round" transform="rotate(-90 24 24)"/>
+            </svg>
+            <span style={{position:'absolute',top:'50%',left:'50%',
+              transform:'translate(-50%,-50%)',fontSize:11,fontWeight:700,color}}>{score}</span>
+          </div>
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color}}>{label}</div>
+            <div style={{fontSize:11,color:'#888'}}>SEO Health Score</div>
+          </div>
+        </div>
+      );
+    };
+
+    const parseScore = t => {
+      const m = t.match(/SEO Health Score[:\s]+(\d+)/i)||t.match(/Score[:\s]+(\d+)\/100/i);
+      return m?parseInt(m[1]):null;
+    };
+
+    const MsgContent = ({content}) => {
+      const score = parseScore(content);
+      return (
+        <div style={{lineHeight:1.75}}>
+          {content.split('\n').map((line,i)=>{
+            if(/^#{1,2} /.test(line)) return <div key={i} style={{fontSize:15,fontWeight:700,color:'#00ff88',marginTop:18,marginBottom:5,fontFamily:'Space Mono,monospace'}}>{line.replace(/^#+\s/,'')}</div>;
+            if(/^\*\*(.+)\*\*$/.test(line)) return <div key={i} style={{fontWeight:700,color:'#e8e8e8',marginTop:12,marginBottom:4}}>{line.replace(/\*\*/g,'')}</div>;
+            if(/^[-*] /.test(line)) return (
+              <div key={i} style={{display:'flex',gap:8,marginBottom:4,paddingLeft:8}}>
+                <span style={{color:'#00ff88',flexShrink:0,marginTop:2}}>▸</span>
+                <span style={{color:'#c8c8c8',fontSize:14}} dangerouslySetInnerHTML={{__html:line.slice(2).replace(/\*\*(.+?)\*\*/g,'<strong style="color:#e8e8e8">$1</strong>')}}/>
+              </div>
+            );
+            if(/^\d+\./.test(line)) return <div key={i} style={{color:'#c8c8c8',fontSize:14,marginBottom:4,paddingLeft:8}} dangerouslySetInnerHTML={{__html:line.replace(/\*\*(.+?)\*\*/g,'<strong style="color:#e8e8e8">$1</strong>')}} />;
+            if(!line.trim()) return <div key={i} style={{height:6}}/>;
+            return <div key={i} style={{color:'#c8c8c8',fontSize:14,marginBottom:3}} dangerouslySetInnerHTML={{__html:line.replace(/\*\*(.+?)\*\*/g,'<strong style="color:#e8e8e8">$1</strong>')}}/>;
+          })}
+          {score && <ScoreBadge score={score}/>}
+        </div>
+      );
+    };
+
+    function App() {
+      const [messages, setMessages] = useState([]);
+      const [input, setInput] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [started, setStarted] = useState(false);
+      const [apiKey, setApiKey] = useState('');
+      const [apiKeySaved, setApiKeySaved] = useState(false);
+      const [showKey, setShowKey] = useState(false);
+      const [tempKey, setTempKey] = useState('');
+      const bottomRef = useRef(null);
+
+      useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:'smooth'}); },[messages,loading]);
+
+      const saveKey = () => {
+        if(tempKey.trim()){ setApiKey(tempKey.trim()); setApiKeySaved(true); setShowKey(false); }
+      };
+
+      const sendMsg = async (text) => {
+        const userMsg = text||input.trim();
+        if(!userMsg||loading) return;
+        if(!apiKey){ setShowKey(true); return; }
+        setInput(''); setStarted(true);
+        const newMsgs = [...messages,{role:'user',content:userMsg}];
+        setMessages(newMsgs); setLoading(true);
+        try {
+          const contents = newMsgs.map(m=>({
+            role: m.role==='assistant'?'model':'user',
+            parts:[{text:m.content}]
+          }));
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+            { method:'POST', headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({
+                system_instruction:{parts:[{text:SYSTEM_PROMPT}]},
+                contents,
+                generationConfig:{maxOutputTokens:2048,temperature:0.7}
+              })
+            }
+          );
+          const data = await res.json();
+          if(data.error) throw new Error(data.error.message);
+          const reply = data.candidates?.[0]?.content?.parts?.[0]?.text||'No response.';
+          setMessages([...newMsgs,{role:'assistant',content:reply}]);
+        } catch(e) {
+          setMessages([...newMsgs,{role:'assistant',content:`Error: ${e.message}. Check your Gemini API key.`}]);
+        }
+        setLoading(false);
+      };
+
+      const quick = ['Audit: shopify.com','Analyse: notion.so','Review: fitpro.com (fitness)'];
+
+      return (
+        <div style={{minHeight:'100vh',display:'flex',flexDirection:'column'}}>
+          {/* Header */}
+          <div style={{borderBottom:'1px solid #00ff8820',padding:'14px 20px',display:'flex',
+            alignItems:'center',justifyContent:'space-between',background:'#0a0f14',
+            position:'sticky',top:0,zIndex:10}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:36,height:36,borderRadius:8,
+                background:'linear-gradient(135deg,#00ff88,#00cc6a)',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:18,boxShadow:'0 0 20px #00ff8840'}}>⚡</div>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:'#fff',fontFamily:'Space Mono,monospace',letterSpacing:1}}>SEO ANALYST AGENT</div>
+                <div style={{fontSize:10,color:'#4488ff',letterSpacing:2}}>POWERED BY GOOGLE GEMINI · FREE</div>
+              </div>
+            </div>
+            <button onClick={()=>{setShowKey(!showKey);setTempKey(apiKey);}} style={{
+              background:apiKeySaved?'#00ff8815':'#ff880015',
+              border:`1px solid ${apiKeySaved?'#00ff8840':'#ff880040'}`,
+              borderRadius:8,padding:'6px 12px',
+              color:apiKeySaved?'#00ff88':'#ff8844',
+              fontSize:11,cursor:'pointer',fontFamily:'inherit'}}>
+              {apiKeySaved?'🔑 KEY SET':'🔑 ADD KEY'}
+            </button>
+          </div>
+
+          {/* Key Panel */}
+          {showKey && (
+            <div style={{background:'#0d1117',borderBottom:'1px solid #1e2833',
+              padding:'16px 20px',animation:'slideDown 0.2s ease',zIndex:9}}>
+              <div style={{maxWidth:800,margin:'0 auto'}}>
+                <div style={{fontSize:11,color:'#666',marginBottom:8}}>
+                  Get free key → <span style={{color:'#4488ff'}}>aistudio.google.com</span> → Get API Key → Create API Key
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <input type="password" value={tempKey} onChange={e=>setTempKey(e.target.value)}
+                    onKeyDown={e=>e.key==='Enter'&&saveKey()}
+                    placeholder="Paste your Gemini API key (AIza...)"
+                    style={{flex:1,background:'#080c10',border:'1px solid #1e2833',
+                      borderRadius:8,padding:'10px 14px',color:'#e0e0e0',
+                      fontSize:13,fontFamily:'inherit'}}/>
+                  <button onClick={saveKey} style={{background:'linear-gradient(135deg,#00ff88,#00cc6a)',
+                    border:'none',borderRadius:8,padding:'10px 20px',
+                    color:'#000',fontWeight:700,fontSize:12,cursor:'pointer',fontFamily:'inherit'}}>SAVE</button>
+                </div>
+                <div style={{fontSize:10,color:'#333',marginTop:8}}>Key stays in your browser only</div>
+              </div>
+            </div>
+          )}
+
+          {/* Chat */}
+          <div style={{flex:1,overflowY:'auto',padding:'24px 20px',maxWidth:800,
+            width:'100%',margin:'0 auto',position:'relative',zIndex:1}}>
+
+            {!started && (
+              <div style={{animation:'fadeIn 0.6s ease',textAlign:'center',padding:'32px 20px'}}>
+                <div style={{fontSize:48,marginBottom:16,filter:'drop-shadow(0 0 20px #00ff8880)'}}>🔍</div>
+                <h1 style={{fontSize:24,fontWeight:700,color:'#fff',fontFamily:'Space Mono,monospace',marginBottom:8}}>
+                  Full-Stack <span style={{color:'#00ff88'}}>SEO Analyst</span>
+                </h1>
+                <p style={{color:'#555',fontSize:12,maxWidth:360,margin:'0 auto 24px',lineHeight:1.8}}>
+                  One agent. Complete audit. Powered by Google Gemini — 100% free.
+                </p>
+
+                {!apiKeySaved && (
+                  <div style={{background:'#0d1008',border:'1px solid #4488ff30',
+                    borderRadius:12,padding:'16px 20px',marginBottom:24,
+                    maxWidth:420,margin:'0 auto 24px',textAlign:'left'}}>
+                    <div style={{fontSize:12,color:'#4488ff',marginBottom:10,fontWeight:700}}>Quick Setup (2 mins)</div>
+                    {[['01','Go to','aistudio.google.com'],['02','Click','Get API Key → Create API Key'],['03','Tap','🔑 ADD KEY above & paste']].map(([n,l,a])=>(
+                      <div key={n} style={{display:'flex',gap:12,alignItems:'center',marginBottom:8}}>
+                        <span style={{fontSize:10,color:'#4488ff',fontWeight:700,width:20}}>{n}</span>
+                        <span style={{fontSize:12,color:'#666'}}>{l} <span style={{color:'#88aaff'}}>{a}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div style={{display:'flex',flexWrap:'wrap',gap:8,justifyContent:'center',marginBottom:24}}>
+                  {['🕷️ Technical','📄 On-Page','🏆 Competitors','🔗 Backlinks','🎯 Keywords','📅 90-Day Plan'].map(c=>(
+                    <span key={c} style={{fontSize:11,padding:'5px 12px',borderRadius:20,
+                      border:'1px solid #00ff8830',color:'#00ff8890',background:'#00ff8808'}}>{c}</span>
+                  ))}
+                </div>
+
+                <div style={{fontSize:10,color:'#333',marginBottom:10,letterSpacing:1}}>TRY AN EXAMPLE</div>
+                <div style={{display:'flex',flexDirection:'column',gap:8,maxWidth:400,margin:'0 auto'}}>
+                  {quick.map(p=>(
+                    <button key={p} onClick={()=>sendMsg(p)} style={{background:'#0d1117',
+                      border:'1px solid #1e2a1e',borderRadius:10,padding:'11px 16px',
+                      color:'#7aaa7a',fontSize:12,cursor:'pointer',textAlign:'left',fontFamily:'inherit'}}
+                      onMouseOver={e=>{e.currentTarget.style.borderColor='#00ff8850';e.currentTarget.style.color='#00ff88';}}
+                      onMouseOut={e=>{e.currentTarget.style.borderColor='#1e2a1e';e.currentTarget.style.color='#7aaa7a';}}>
+                      ▶ {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((msg,i)=>(
+              <div key={i} style={{marginBottom:20,animation:'fadeIn 0.4s ease',
+                display:'flex',flexDirection:'column',
+                alignItems:msg.role==='user'?'flex-end':'flex-start'}}>
+                {msg.role==='user'?(
+                  <div style={{background:'linear-gradient(135deg,#003320,#001a10)',
+                    border:'1px solid #00ff8830',borderRadius:'16px 16px 4px 16px',
+                    padding:'12px 16px',maxWidth:'80%',fontSize:13,color:'#00ff88'}}>
+                    {msg.content}
+                  </div>
+                ):(
+                  <div style={{background:'#0d1117',border:'1px solid #1e2833',
+                    borderRadius:'4px 16px 16px 16px',padding:'16px 20px',width:'100%'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,
+                      paddingBottom:10,borderBottom:'1px solid #1e2833'}}>
+                      <div style={{width:24,height:24,borderRadius:6,
+                        background:'linear-gradient(135deg,#00ff88,#00cc6a)',
+                        display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>⚡</div>
+                      <span style={{fontSize:11,color:'#00ff88',letterSpacing:1}}>SEO AGENT REPORT</span>
+                      <span style={{fontSize:10,color:'#333',marginLeft:'auto'}}>Gemini 1.5 Flash</span>
+                    </div>
+                    <MsgContent content={msg.content}/>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {loading && (
+              <div style={{animation:'fadeIn 0.3s ease',background:'#0d1117',
+                border:'1px solid #1e2833',borderRadius:'4px 16px 16px 16px',
+                display:'inline-block',marginBottom:20}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 16px'}}>
+                  <div style={{width:24,height:24,borderRadius:6,background:'linear-gradient(135deg,#00ff88,#00cc6a)',
+                    display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>⚡</div>
+                  <span style={{fontSize:11,color:'#00ff88',letterSpacing:1,animation:'pulse 1.5s infinite'}}>
+                    RUNNING SEO ANALYSIS...
+                  </span>
+                </div>
+                <TypingDots/>
+              </div>
+            )}
+            <div ref={bottomRef}/>
+          </div>
+
+          {/* Input */}
+          <div style={{borderTop:'1px solid #00ff8815',padding:'14px 20px',
+            background:'#0a0f14',position:'sticky',bottom:0,zIndex:10}}>
+            <div style={{maxWidth:800,margin:'0 auto',display:'flex',gap:10,alignItems:'flex-end'}}>
+              <div style={{flex:1,background:'#0d1117',border:'1px solid #1e2833',borderRadius:14,padding:'12px 16px'}}>
+                <textarea value={input} rows={1}
+                  onChange={e=>setInput(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}}
+                  placeholder={apiKeySaved?'Enter a URL or domain to audit...':'Add your free Gemini API key first (tap 🔑 above)'}
+                  style={{width:'100%',background:'transparent',border:'none',
+                    color:'#e0e0e0',fontSize:13,fontFamily:'inherit',lineHeight:1.6}}/>
+              </div>
+              <button onClick={()=>sendMsg()} disabled={!input.trim()||loading}
+                style={{width:44,height:44,borderRadius:12,border:'none',
+                  background:input.trim()&&!loading?'linear-gradient(135deg,#00ff88,#00cc6a)':'#1a2a1a',
+                  color:input.trim()&&!loading?'#000':'#334433',
+                  fontSize:18,cursor:input.trim()&&!loading?'pointer':'not-allowed',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  transition:'all 0.2s',flexShrink:0,
+                  boxShadow:input.trim()&&!loading?'0 0 20px #00ff8840':'none'}}>⚡</button>
+            </div>
+            <div style={{textAlign:'center',fontSize:10,color:'#2a2a2a',marginTop:6,letterSpacing:1}}>
+              SHIFT+ENTER FOR NEW LINE · ENTER TO SEND
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
